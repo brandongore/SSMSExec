@@ -4,7 +4,9 @@
         <Identity Id="SSMSExec.41ddb54b-6ec5-43ad-ad33-add93c5875c1" Version="1.0" Language="en-US" Publisher="Brandon Gore" />
         <DisplayName>SSMSExec</DisplayName>
         <Description xml:space="preserve">An extension to run executables against active sql query</Description>
+        <MoreInfo>https://github.com/brandongore/SSMSExec</MoreInfo>
         <License>LICENSE.txt</License>
+        <Preview>true</Preview>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0)">
