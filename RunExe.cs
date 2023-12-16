@@ -123,12 +123,27 @@ namespace SSMSExec
                 return;
             }
 
+            // Get the status bar service
+            IVsStatusbar statusBar = (IVsStatusbar)await this.ServiceProvider.GetServiceAsync(typeof(SVsStatusbar));
+
+            // Make sure the status bar is not frozen
+            int frozen;
+            statusBar.IsFrozen(out frozen);
+            if (frozen != 0)
+            {
+                statusBar.FreezeOutput(0);
+            }
+
+            // Set the status bar text
+            statusBar.SetText("Running the process...");
+
             EditPoint editPoint = textDoc.StartPoint.CreateEditPoint();
             string sqlQuery = editPoint.GetText(textDoc.EndPoint);
 
             string arguments = $"{generalOptions.ExeParameter1} {generalOptions.ExeParameter2} {generalOptions.ExeParameter3} {generalOptions.ExeParameter4} {generalOptions.ExeParameter5} {generalOptions.ExeParameter6}";
 
-            ProcessStartInfo startInfo = new ProcessStartInfo() {
+            ProcessStartInfo startInfo = new ProcessStartInfo()
+            {
                 FileName = generalOptions.ExeLocation,
                 Arguments = arguments,
                 RedirectStandardInput = true,
@@ -138,32 +153,34 @@ namespace SSMSExec
                 CreateNoWindow = true
             };
 
-
-
-            System.Diagnostics.Process process = new System.Diagnostics.Process();
-            process.StartInfo = startInfo;
-            process.Start();
-
-            await process.StandardInput.WriteLineAsync(sqlQuery);
-            process.StandardInput.Close();
-
-            try { 
-                var updatedQuery = await process.StandardOutput.ReadToEndAsync();
-                var processError = await process.StandardError.ReadToEndAsync();
-                if (process.ExitCode != 0)
+            try
+            {
+                using (var process = System.Diagnostics.Process.Start(startInfo))
                 {
-                    MessageBox.Show("Error: Process exited unexpectedly", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                await process.WaitForExitAsync();
+                    await process.StandardInput.WriteLineAsync(sqlQuery);
+                    process.StandardInput.Close();
 
-                if (!string.IsNullOrEmpty(processError))
-                {
-                    // Handle the error
-                    MessageBox.Show("Error: " + processError, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                else
-                {
-                    editPoint.ReplaceText(textDoc.EndPoint, updatedQuery, (int)vsEPReplaceTextOptions.vsEPReplaceTextAutoformat);
+
+                    var updatedQuery = await process.StandardOutput.ReadToEndAsync();
+                    var processError = await process.StandardError.ReadToEndAsync();
+                    if (process.ExitCode != 0)
+                    {
+                        MessageBox.Show("Error: Process exited unexpectedly", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    await process.WaitForExitAsync();
+
+                    if (!string.IsNullOrEmpty(processError))
+                    {
+                        // Handle the error
+                        MessageBox.Show("Error: " + processError, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    else
+                    {
+                        editPoint.ReplaceText(textDoc.EndPoint, updatedQuery, (int)vsEPReplaceTextOptions.vsEPReplaceTextAutoformat);
+                    }
+
+                    // Update the status bar text
+                    statusBar.SetText("Process completed.");
                 }
             }
             catch (Exception ex)
